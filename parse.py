@@ -299,7 +299,7 @@ class StreamingJsonParser3:
 class StreamingJsonParser:
     """
         Assumptions:
-        1) In one object no two keys are the same (altough that is allowed in standard)
+        1) In one object no two keys are the same (although that is allowed in standard)
     """
     
     START = 0
@@ -323,10 +323,7 @@ class StreamingJsonParser:
         for c in buffer:
             self._process_char(c)
     
-    def _process_char(self, char: str):
-        """
-        Process a single character of JSON data.
-        """
+    def _process_char(self, char):
         current_obj = self.obj_stack[-1]
         match self.state:
             case self.START:
@@ -357,6 +354,8 @@ class StreamingJsonParser:
                     case '"':
                         self.state = self.IN_STRING_VALUE
                         self.current_value = ""
+                        # Initialize the key with empty string value right away
+                        current_obj[self.current_key] = ""
                     case '{':
                         current_obj[self.current_key] = {}
                         self.obj_stack.append(current_obj[self.current_key])
@@ -365,10 +364,10 @@ class StreamingJsonParser:
             case self.IN_STRING_VALUE:
                 match char:
                     case '"':
-                        current_obj[self.current_key] = self.current_value
                         self.state = self.EXPECT_COMMA_OR_END
                     case _:
                         self.current_value += char
+                        current_obj[self.current_key] = self.current_value
             case self.EXPECT_COMMA_OR_END:
                 match char:
                     case ',':
@@ -387,21 +386,7 @@ class StreamingJsonParser:
         Returns:
             dict: The current state of the parsed JSON object.
         """
-        # Create a copy of the result
-        import copy
-        result = copy.deepcopy(self.result)
-        
-        # If we're in the middle of parsing a string value, include it
-        if self.state == self.IN_STRING_VALUE:
-            # Find the object that contains the partial value
-            current = result
-            for key in self.key_stack:
-                current = current[key]
-            
-            # Set the partial value
-            current[self.current_key] = self.current_value
-        
-        return result
+        return self.result
 
 def run_tests():
     def test_streaming_json_parser():
@@ -436,6 +421,76 @@ def run_tests():
         parser.consume('{"foo": {"bar":"lol", "bar2":"tr')
         print(parser.get())
         assert parser.get() == {"foo": {"bar": "lol", "bar2":"tr"}}
+    
+    def test_deep_nesting():
+        """Test parsing JSON with deep (3-level) nesting."""
+        parser = StreamingJsonParser()
+        parser.consume('{"level1": {"level2": {"level3": "deep value"}}}')
+        assert parser.get() == {"level1": {"level2": {"level3": "deep value"}}}
+        print("Test deep nesting passed!")
+
+    def test_partial_deep_nesting():
+        """Test parsing a partially complete JSON with deep nesting."""
+        parser = StreamingJsonParser()
+        parser.consume('{"level1": {"level2": {"level3": "partial val')
+        assert parser.get() == {"level1": {"level2": {"level3": "partial val"}}}
+        print("Test partial deep nesting passed!")
+
+    def test_multiple_nested_objects():
+        """Test parsing JSON with multiple nested objects at the same level."""
+        parser = StreamingJsonParser()
+        parser.consume('{"obj1": {"nested1": "value1"}, "obj2": {"nested2": "value2"}, "obj3": {"nested3": "value3"}}')
+        expected = {
+            "obj1": {"nested1": "value1"}, 
+            "obj2": {"nested2": "value2"}, 
+            "obj3": {"nested3": "value3"}
+        }
+        assert parser.get() == expected
+        print("Test multiple nested objects passed!")
+
+    def test_mixed_complete_partial_objects():
+        """Test parsing JSON with both complete and partial nested objects."""
+        parser = StreamingJsonParser()
+        parser.consume('{"complete": {"key1": "val1", "key2": "val2"}, "partial": {"key3": "val3", "key4": "incomplete')
+        expected = {
+            "complete": {"key1": "val1", "key2": "val2"},
+            "partial": {"key3": "val3", "key4": "incomplete"}
+        }
+        assert parser.get() == expected
+        print("Test mixed complete and partial objects passed!")
+
+    def test_complex_incremental_parsing():
+        parser = StreamingJsonParser()
+        
+        # Start with an empty object
+        parser.consume('{')
+        assert parser.get() == {}, parser.get()
+        
+        # Add first key and start nested object
+        parser.consume('"outer1": {')
+        assert parser.get() == {"outer1": {}}, parser.get()
+        
+        # Add key-value inside first nested object
+        parser.consume('"inner1": "value1"')
+        assert parser.get() == {"outer1": {"inner1": "value1"}}, parser.get()
+        
+        # Close first nested object, start second key and nested object
+        parser.consume('}, "outer2": {')
+        assert parser.get() == {"outer1": {"inner1": "value1"}, "outer2": {}}, parser.get()
+        
+        # Start deep nesting in second object
+        parser.consume('"inner2": {"deepkey": "')
+        assert parser.get() == {"outer1": {"inner1": "value1"}, "outer2": {"inner2": {"deepkey": ""}}}, parser.get()
+        
+        # Partially complete deep nested value
+        parser.consume('deepvalue')
+        assert parser.get() == {"outer1": {"inner1": "value1"}, "outer2": {"inner2": {"deepkey": "deepvalue"}}}, parser.get()
+        
+        # Complete all objects
+        parser.consume('"}}}')
+        assert parser.get() == {"outer1": {"inner1": "value1"}, "outer2": {"inner2": {"deepkey": "deepvalue"}}}, parser.get()
+        
+        print("Test complex incremental parsing passed!")
     for f in locals().values():
         f()
 run_tests()
