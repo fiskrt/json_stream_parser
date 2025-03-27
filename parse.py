@@ -46,8 +46,14 @@ class StreamingJsonParser:
     """
         Assumptions:
         1) In one object no two keys are the same (although that is allowed in standard)
-        3) no malformed json
-        4) expect one json object in stream.
+        2) no malformed json
+        3) expect one json object in stream.
+
+        fixes:
+        2) easily fixed by adding else statement for example if we are expecting a colon
+        and we get anything else (non-whitespace) we raise an error.
+
+        3) 
     """
     
     START = 0               # expect {
@@ -61,59 +67,58 @@ class StreamingJsonParser:
     
     def __init__(self):
         self.result = {}
-        self.obj_stack = [self.result]
+        self.stack = []
         self.state = self.START
         self.current_key = ""
     
     def consume(self, buffer: str) -> None:
         for c in buffer:
-            if self.state not in [self.IN_KEY, self.IN_VALUE]:
-                if c in self.WHITESPACE:
-                    continue
+            if c in self.WHITESPACE and self.state not in [self.IN_KEY, self.IN_VALUE]:
+                continue
             self._process_char(c)
     
     def _process_char(self, char: str) -> None:
-        current_obj = self.obj_stack[-1]
+        current_obj = self.stack[-1] if self.stack else self.result
         match self.state:
             case self.START:
                 if char == '{':
                     self.state = self.EXPECT_KEY_OR_END
             case self.EXPECT_KEY_OR_END:
-                match char:
-                    case '"':
-                        self.state = self.IN_KEY
-                        self.current_key = ""
-                    case '}':
-                        if len(self.obj_stack) > 1:  # Don't pop the root
-                            self.obj_stack.pop()
-                            self.state = self.EXPECT_COMMA_OR_END
+                if char == '"':
+                    self.state = self.IN_KEY
+                    self.current_key = ""
+                elif char == '}':
+                    if self.stack:
+                        self.stack.pop()
+                    self.state = self.EXPECT_COMMA_OR_END
             case self.IN_KEY:
-                match char:
-                    case '"': self.state = self.EXPECT_COLON
-                    case _: self.current_key += char
+                if char == '"':
+                    self.state = self.EXPECT_COLON
+                else:
+                    self.current_key += char
             case self.IN_VALUE:
-                match char:
-                    case '"': self.state = self.EXPECT_COMMA_OR_END
-                    case _: current_obj[self.current_key] += char
+                if char == '"':
+                    self.state = self.EXPECT_COMMA_OR_END
+                else:
+                    current_obj[self.current_key] += char
             case self.EXPECT_COLON:
                 if char == ':':
                     self.state = self.EXPECT_VALUE
             case self.EXPECT_VALUE:
-                match char:
-                    case '"':
-                        self.state = self.IN_VALUE
-                        current_obj[self.current_key] = ""
-                    case '{':
-                        current_obj[self.current_key] = {}
-                        self.obj_stack.append(current_obj[self.current_key])
-                        self.state = self.EXPECT_KEY_OR_END
+                if char == '"':
+                    self.state = self.IN_VALUE
+                    current_obj[self.current_key] = ""
+                elif char == '{':
+                    current_obj[self.current_key] = {}
+                    self.stack.append(current_obj[self.current_key])
+                    self.state = self.EXPECT_KEY_OR_END
             case self.EXPECT_COMMA_OR_END:
-                match char:
-                    case ',': self.state = self.EXPECT_KEY_OR_END
-                    case '}':
-                        if len(self.obj_stack) > 1:
-                            self.obj_stack.pop()
-                            self.state = self.EXPECT_COMMA_OR_END
+                if char == ',':
+                    self.state = self.EXPECT_KEY_OR_END
+                elif char == '}':
+                    if self.stack:
+                        self.stack.pop()
+                    self.state = self.EXPECT_COMMA_OR_END 
     
     def get(self) -> dict:
         return self.result
