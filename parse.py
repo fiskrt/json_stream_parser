@@ -317,13 +317,12 @@ class StreamingJsonParser:
         self.key_stack = []  # Stack of keys to track the path
         self.state = self.START
         self.current_key = ""
-        self.current_value = ""
     
-    def consume(self, buffer: str):
+    def consume(self, buffer: str) -> None:
         for c in buffer:
             self._process_char(c)
     
-    def _process_char(self, char):
+    def _process_char(self, char: str) -> None:
         current_obj = self.obj_stack[-1]
         match self.state:
             case self.START:
@@ -353,8 +352,6 @@ class StreamingJsonParser:
                 match char:
                     case '"':
                         self.state = self.IN_STRING_VALUE
-                        self.current_value = ""
-                        # Initialize the key with empty string value right away
                         current_obj[self.current_key] = ""
                     case '{':
                         current_obj[self.current_key] = {}
@@ -366,8 +363,7 @@ class StreamingJsonParser:
                     case '"':
                         self.state = self.EXPECT_COMMA_OR_END
                     case _:
-                        self.current_value += char
-                        current_obj[self.current_key] = self.current_value
+                        current_obj[self.current_key] += char
             case self.EXPECT_COMMA_OR_END:
                 match char:
                     case ',':
@@ -379,13 +375,7 @@ class StreamingJsonParser:
                                 self.key_stack.pop()
                             self.state = self.EXPECT_COMMA_OR_END
     
-    def get(self):
-        """
-        Return the current state of the parsed JSON object.
-        
-        Returns:
-            dict: The current state of the parsed JSON object.
-        """
+    def get(self) -> dict:
         return self.result
 
 def run_tests():
