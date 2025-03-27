@@ -143,7 +143,6 @@ def run_tests():
     def test4():
         parser = StreamingJsonParser()
         parser.consume('{"foo": {"bar":"')
-        print(parser.get())
         assert parser.get() == {"foo": {"bar":""}}
 
     def test5():
@@ -154,7 +153,6 @@ def run_tests():
     def test6():
         parser = StreamingJsonParser()
         parser.consume('{"foo": {"bar":"lol", "bar2":"tr')
-        print(parser.get())
         assert parser.get() == {"foo": {"bar": "lol", "bar2":"tr"}}
     
     def test_deep_nesting():
@@ -162,14 +160,12 @@ def run_tests():
         parser = StreamingJsonParser()
         parser.consume('{"level1": {"level2": {"level3": "deep value"}}}')
         assert parser.get() == {"level1": {"level2": {"level3": "deep value"}}}
-        print("Test deep nesting passed!")
 
     def test_partial_deep_nesting():
         """Test parsing a partially complete JSON with deep nesting."""
         parser = StreamingJsonParser()
         parser.consume('{"level1": {"level2": {"level3": "partial val')
         assert parser.get() == {"level1": {"level2": {"level3": "partial val"}}}
-        print("Test partial deep nesting passed!")
 
     def test_multiple_nested_objects():
         """Test parsing JSON with multiple nested objects at the same level."""
@@ -181,7 +177,6 @@ def run_tests():
             "obj3": {"nested3": "value3"}
         }
         assert parser.get() == expected
-        print("Test multiple nested objects passed!")
 
     def test_mixed_complete_partial_objects():
         """Test parsing JSON with both complete and partial nested objects."""
@@ -192,7 +187,6 @@ def run_tests():
             "partial": {"key3": "val3", "key4": "incomplete"}
         }
         assert parser.get() == expected
-        print("Test mixed complete and partial objects passed!")
 
     def test_complex_incremental_parsing():
         parser = StreamingJsonParser()
@@ -223,7 +217,7 @@ def run_tests():
         parser.consume('"}}}')
         assert parser.get() == {"outer1": {"inner1": "value1"}, "outer2": {"inner2": {"deepkey": "deepvalue"}}}, parser.get()
         
-        print("Test complex incremental parsing passed!")
-    for f in locals().values():
+    for name, f in locals().items():
         f()
+        print(f'{name} passed')
 run_tests()
