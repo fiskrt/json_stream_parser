@@ -1,4 +1,3 @@
-
 """
 For this task we consider a subset of JSON, where values consist solely of strings and objects. Escape sequences in strings or duplicate keys in objects are not expected.
 Even if the input JSON data is incomplete, the parser should be able to return the current state of the parsed JSON object at any given point in time.
@@ -16,31 +15,6 @@ String values on the other hand can be partially returned: `{"test": "hello", "c
  """
 
 
-class StreamingJsonParser2:
-    """
-        The 5 special characters " , : { }
-
-        High level states:
-            S) Expecting start obj {
-            1) Expecting to receive a key "key":
-            2) Expecting a value or a new obj start "value" or {
-            3) Expecting obj done } or comma
-            F) Done
-
-    """
-
-    def __init__(self):
-        """
-        Need to remember:
-        1) partially created key because unless complete we don't show it 
-        2) 
-
-        """
-        # stack of objects
-        self.stack = []
-        # JSON object created so far
-        self.json = {}
-
     
 class StreamingJsonParser:
     """
@@ -48,10 +22,11 @@ class StreamingJsonParser:
         1) In one object no two keys are the same (although that is allowed in standard)
         2) no malformed json
         3) expect one json object in stream.
+        4) we have that parse '{"foo":}' is {} because you don't know the value type
 
         fixes:
         2) easily fixed by adding else statement for example if we are expecting a colon
-        and we get anything else (non-whitespace) we raise an error.
+        and we get anything else (non-whitespace) we raise an exception.
 
         3) 
     """
@@ -219,5 +194,5 @@ def run_tests():
         
     for name, f in locals().items():
         f()
-        print(f'{name} passed')
+        print(f'[v] {name}')
 run_tests()
