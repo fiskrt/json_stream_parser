@@ -46,17 +46,18 @@ class StreamingJsonParser:
     """
         Assumptions:
         1) In one object no two keys are the same (although that is allowed in standard)
-        2) no whitespace
         3) no malformed json
+        4) expect one json object in stream.
     """
     
-    START = 0
-    EXPECT_KEY_OR_END = 1
-    IN_KEY = 2
-    EXPECT_COLON = 3
-    EXPECT_VALUE = 4
-    IN_STRING_VALUE = 5
-    EXPECT_COMMA_OR_END = 6
+    START = 0               # expect {
+    EXPECT_KEY_OR_END = 1   # expect " or }
+    IN_KEY = 2              # expect char or end quote "
+    IN_VALUE = 3            # expect char or end quote "
+    EXPECT_COLON = 4        # expect :
+    EXPECT_VALUE = 5        # expect start quote "
+    EXPECT_COMMA_OR_END = 6 # expect , or }
+    WHITESPACE = ['\n', '\t', ' ', '\r']
     
     def __init__(self):
         self.result = {}
@@ -66,6 +67,9 @@ class StreamingJsonParser:
     
     def consume(self, buffer: str) -> None:
         for c in buffer:
+            if self.state not in [self.IN_KEY, self.IN_VALUE]:
+                if c in self.WHITESPACE:
+                    continue
             self._process_char(c)
     
     def _process_char(self, char: str) -> None:
@@ -87,27 +91,27 @@ class StreamingJsonParser:
                 match char:
                     case '"': self.state = self.EXPECT_COLON
                     case _: self.current_key += char
+            case self.IN_VALUE:
+                match char:
+                    case '"': self.state = self.EXPECT_COMMA_OR_END
+                    case _: current_obj[self.current_key] += char
             case self.EXPECT_COLON:
                 if char == ':':
                     self.state = self.EXPECT_VALUE
             case self.EXPECT_VALUE:
                 match char:
                     case '"':
-                        self.state = self.IN_STRING_VALUE
+                        self.state = self.IN_VALUE
                         current_obj[self.current_key] = ""
                     case '{':
                         current_obj[self.current_key] = {}
                         self.obj_stack.append(current_obj[self.current_key])
                         self.state = self.EXPECT_KEY_OR_END
-            case self.IN_STRING_VALUE:
-                match char:
-                    case '"': self.state = self.EXPECT_COMMA_OR_END
-                    case _: current_obj[self.current_key] += char
             case self.EXPECT_COMMA_OR_END:
                 match char:
                     case ',': self.state = self.EXPECT_KEY_OR_END
                     case '}':
-                        if len(self.obj_stack) > 1:  # Don't pop the root
+                        if len(self.obj_stack) > 1:
                             self.obj_stack.pop()
                             self.state = self.EXPECT_COMMA_OR_END
     
@@ -165,7 +169,7 @@ def run_tests():
     def test_multiple_nested_objects():
         """Test parsing JSON with multiple nested objects at the same level."""
         parser = StreamingJsonParser()
-        parser.consume('{"obj1": {"nested1": "value1"}, "obj2": {"nested2": "value2"}, "obj3": {"nested3": "value3"}}')
+        parser.consume('{"obj1": {   "nested1": "value1"}, "obj2": {"nested2": "value2"}, "obj3": {"nested3": "value3"}}')
         expected = {
             "obj1": {"nested1": "value1"}, 
             "obj2": {"nested2": "value2"}, 
@@ -187,8 +191,6 @@ def run_tests():
 
     def test_complex_incremental_parsing():
         parser = StreamingJsonParser()
-        
-        # Start with an empty object
         parser.consume('{')
         assert parser.get() == {}, parser.get()
         
