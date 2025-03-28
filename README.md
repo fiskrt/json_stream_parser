@@ -44,14 +44,44 @@ print(result)
 ### LLM Integration Example
 
 ```python
-parser = StreamingJsonParser()
+import os
+import asyncio
+from openai import AsyncOpenAI
+from streaming_json_parser import StreamingJsonParser
 
-# Process streaming LLM response
-for chunk in llm_streaming_response:
-    parser.consume(chunk)
-    # Access intermediate state if needed
-    current_data = parser.get()
-    update_ui(current_data)
+async def stream_json_from_openai():
+    client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    parser = StreamingJsonParser()
+    
+    # Request that explicitly asks for JSON output
+    stream = await client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "Return JSON responses only."},
+            {"role": "user", "content": "Give me a user profile with name, age, and interests."}
+        ],
+        response_format={"type": "json_object"},
+        stream=True
+    )
+    
+    # Process the streaming response
+    async for chunk in stream:
+        if chunk.choices[0].delta.content:
+            text_chunk = chunk.choices[0].delta.content
+            parser.consume(text_chunk)
+            current_json = parser.get()
+            
+            if "name" in current_json:
+                print(f"Name received: {current_json['name']}")
+            
+            if "interests" in current_json:
+                print(f"Interests so far: {len(current_json['interests'])}")
+    
+    return parser.get()
+
+if __name__ == "__main__":
+    result = asyncio.run(stream_json_from_openai())
+    print(f"Complete profile: {result}")
 ```
 
 ### Strict Mode
@@ -61,7 +91,7 @@ for chunk in llm_streaming_response:
 parser = StreamingJsonParser(strict_mode=True)
 
 try:
-    parser.consume('{"invalid":: "value"}')
+    parser.consume('{"invalid"a: "value"}')
 except ValueError as e:
     print(f"Invalid JSON: {e}")
 ```
