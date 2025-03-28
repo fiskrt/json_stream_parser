@@ -141,7 +141,6 @@ class StreamingJsonParser:
                         self.stack.pop()
                     self.state = self.EXPECT_COMMA_OR_END 
                 
-    
     def get(self) -> dict:
         return self.result
 
