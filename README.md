@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-A lightning-fast, stach-based, memory-efficient streaming JSON parser with zero dependencies.
+A fast, stack-based, memory-efficient streaming JSON parser with zero dependencies.
 
 `StreamingJsonParser` provides incremental parsing of JSON data, allowing you to process JSON as it arrives rather than waiting for the complete document. Perfect for handling large JSON responses from APIs, LLM outputs, and other streaming contexts.
 
