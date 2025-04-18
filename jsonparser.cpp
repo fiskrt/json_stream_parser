@@ -1,6 +1,7 @@
 /**
- * StreamingJsonParser: A C++ implementation of a streaming JSON parser.
- */
+* StreamingJsonParser: A C++ implementation of a streaming JSON parser.
+* With Python bindings using pybind11.
+*/
 
 #include <iostream>
 #include <string>
@@ -9,25 +10,34 @@
 #include <memory>
 #include <stdexcept>
 #include <cassert>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
-// Forward declarations
+namespace py = pybind11;
+
 class JsonValue;
 class JsonString;
 class JsonObject;
 
 /**
- * Base class for JSON values
- */
+Our JSON values are defined by classes JsonString and 
+JsonObject where both are derived from JsonValue.
+
+JSON keys are always strings so we use std::string for those.
+It's also easy to convert to python types using py::str.
+
+*/
 class JsonValue {
 public:
     virtual ~JsonValue() = default;
     virtual bool isString() const = 0;
     virtual bool isObject() const = 0;
+    virtual py::object toPython() const = 0;
 };
 
 /**
- * String value in JSON
- */
+* String value in JSON
+*/
 class JsonString : public JsonValue {
 public:
     JsonString(const std::string& value = "") : value(value) {}
@@ -38,13 +48,17 @@ public:
     std::string& getValue() { return value; }
     const std::string& getValue() const { return value; }
     
+    py::object toPython() const override {
+        return py::str(value);
+    }
+    
 private:
     std::string value;
 };
 
 /**
- * Object value in JSON (collection of key-value pairs)
- */
+* Object value in JSON (collection of key-value pairs)
+*/
 class JsonObject : public JsonValue {
 public:
     bool isString() const override { return false; }
@@ -66,9 +80,13 @@ public:
         return it != members.end() ? it->second.get() : nullptr;
     }
     
-    // Get all members
-    const std::unordered_map<std::string, std::unique_ptr<JsonValue>>& getMembers() const {
-        return members;
+    // Construct a python dictionary with py::objects as keys and values.
+    py::object toPython() const override {
+        py::dict result;
+        for (const auto& [key, value] : members) {
+            result[py::str(key)] = value->toPython();
+        }
+        return result;
     }
     
 private:
@@ -76,13 +94,8 @@ private:
 };
 
 /**
- * Stack-based state machine parser for streaming JSON.
- * 
- * Assumptions (same as Python version):
- * 1) In one object no two keys are the same
- * 2) Expect one JSON object in stream
- * 3) Partial values like '{"foo":}' yield {} because value type is unknown
- */
+* Stack-based state machine parser for streaming JSON.
+*/
 class StreamingJsonParser {
 public:
     // Possible states in the parsing state machine
@@ -96,7 +109,6 @@ public:
         EXPECT_COMMA_OR_END = 6  // expect , or }
     };
     
-    // Constructor
     StreamingJsonParser(bool strict_mode = false) 
         : state(START), strict_mode(strict_mode), result(new JsonObject()) {
         // Initialize the expected characters for each state
@@ -107,10 +119,8 @@ public:
         expected_chars[EXPECT_COMMA_OR_END] = ",}";
     }
     
-    // Destructor
     ~StreamingJsonParser() = default;
     
-    // Consume a string buffer
     void consume(const std::string& buffer) {
         for (char c : buffer) {
             if (isWhitespace(c) && state != IN_KEY && state != IN_VALUE) {
@@ -130,9 +140,14 @@ public:
         }
     }
     
-    // Get the parsed result
+    // TODO: don't use ::get
     JsonObject* get() const {
         return dynamic_cast<JsonObject*>(result.get());
+    }
+    
+    // Get the result as a Python dict
+    py::object getPython() const {
+        return result->toPython();
     }
     
 private:
@@ -143,16 +158,14 @@ private:
     bool strict_mode;
     std::unordered_map<State, std::string> expected_chars;
     
-    // Check if a character is whitespace
     bool isWhitespace(char c) const {
         return c == ' ' || c == '\n' || c == '\t' || c == '\r';
     }
     
-    // Process a single character
     void processChar(char c) {
         JsonObject* current_obj = stack.empty() ? 
-                                 dynamic_cast<JsonObject*>(result.get()) : 
-                                 stack.back();
+                                dynamic_cast<JsonObject*>(result.get()) : 
+                                stack.back();
         
         switch (state) {
             case START:
@@ -225,119 +238,22 @@ private:
     }
 };
 
-/**
- * Helper functions for testing
- */
+// macro defined in pybind11.h (common.h)
+PYBIND11_MODULE(cppjsonparser, m) {
+    m.doc() = "C++ streaming JSON parser with Python bindings";
 
-// Compare two JSON objects for equality
-bool areEqual(const JsonObject* a, const JsonObject* b) {
-    const auto& aMembers = a->getMembers();
-    const auto& bMembers = b->getMembers();
-    
-    if (aMembers.size() != bMembers.size()) {
-        return false;
-    }
-    
-    for (const auto& [key, value] : aMembers) {
-        if (!b->has(key)) {
-            return false;
-        }
-        
-        const auto* bValue = b->get(const_cast<std::string&>(key));
-        
-        if (value->isString() && bValue->isString()) {
-            const auto* aString = dynamic_cast<const JsonString*>(value.get());
-            const auto* bString = dynamic_cast<const JsonString*>(bValue);
-            if (aString->getValue() != bString->getValue()) {
-                return false;
-            }
-        } else if (value->isObject() && bValue->isObject()) {
-            const auto* aObject = dynamic_cast<const JsonObject*>(value.get());
-            const auto* bObject = dynamic_cast<const JsonObject*>(bValue);
-            if (!areEqual(aObject, bObject)) {
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-// Create a simple JSON object with string values
-std::unique_ptr<JsonObject> createSimpleObject(
-    std::initializer_list<std::pair<std::string, std::string>> items) {
-    auto obj = std::make_unique<JsonObject>();
-    for (const auto& [key, value] : items) {
-        obj->set(key, std::make_unique<JsonString>(value));
-    }
-    return obj;
-}
-
-// Run tests similar to the Python version
-void runTests() {
-    // Test basic parsing
-    auto test_streaming_json_parser = []() {
-        StreamingJsonParser parser;
-        parser.consume("{\"foo\": \n \"bar\"}asd");
-        auto expected = createSimpleObject({{"foo", "bar"}});
-        assert(areEqual(parser.get(), expected.get()));
-        std::cout << "[v] test_streaming_json_parser" << std::endl;
-    };
-    
-    // Test character-by-character parsing
-    auto test_streaming_json_parser2 = []() {
-        StreamingJsonParser parser;
-        for (char c : "{\"foo\": \"bar\"}") {
-            parser.consume(std::string(1, c));
-        }
-        auto expected = createSimpleObject({{"foo", "bar"}});
-        assert(areEqual(parser.get(), expected.get()));
-        std::cout << "[v] test_streaming_json_parser2" << std::endl;
-    };
-    
-    // Test chunked parsing
-    auto test_chunked_streaming_json_parser = []() {
-        StreamingJsonParser parser;
-        parser.consume("{\"foo\":");
-        parser.consume("\"bar");
-        auto expected = createSimpleObject({{"foo", "bar"}});
-        assert(areEqual(parser.get(), expected.get()));
-        std::cout << "[v] test_chunked_streaming_json_parser" << std::endl;
-    };
-    
-    // Test empty object
-    auto test_empty_object = []() {
-        StreamingJsonParser parser;
-        parser.consume("{}");
-        auto expected = std::make_unique<JsonObject>();
-        assert(areEqual(parser.get(), expected.get()));
-        std::cout << "[v] test_empty_object" << std::endl;
-    };
-    
-    // Test nested objects
-    auto test_nested_objects = []() {
-        StreamingJsonParser parser;
-        parser.consume("{\"foo\": {\"bar\":\"lol\", \"bar2\":\"tr\"}}");
-        
-        auto inner = createSimpleObject({{"bar", "lol"}, {"bar2", "tr"}});
-        auto expected = std::make_unique<JsonObject>();
-        expected->set("foo", std::move(inner));
-        
-        assert(areEqual(parser.get(), expected.get()));
-        std::cout << "[v] test_nested_objects" << std::endl;
-    };
-    
-    // Run all tests
-    test_streaming_json_parser();
-    test_streaming_json_parser2();
-    test_chunked_streaming_json_parser();
-    test_empty_object();
-    test_nested_objects();
-}
-
-int main() {
-    runTests();
-    return 0;
+    // Expose the StreamJsonParser class along with its
+    // constructor and two functions. 
+    // Note that we use getPython for get to return a py::object
+    py::class_<StreamingJsonParser>(m, "StreamingJsonParser")
+        .def(py::init<bool>(), py::arg("strict_mode") = false)
+        .def("consume", &StreamingJsonParser::consume)
+        .def("get", &StreamingJsonParser::getPython);
+            
+    // Expose extra function for parsing without explictly creating obj. 
+    m.def("parse_json", [](const std::string& json_str, bool strict_mode = false) {
+            StreamingJsonParser parser(strict_mode);
+            parser.consume(json_str);
+            return parser.getPython();
+        }, py::arg("json_str"), py::arg("strict_mode") = false);
 }
