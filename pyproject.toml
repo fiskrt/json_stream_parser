@@ -9,10 +9,7 @@ description = "A fast C++ JSON parser with Python bindings"
 authors = [
     { name = "JSON Parser Author", email = "author@example.com" }
 ]
-dependencies = [
-    "pybind11 >=2.5.0",
-    "setuptools>=78.1.0",
-]
+requires-python = ">=3.13"
 
 [tool.scikit-build]
 wheel = {}
@@ -20,5 +17,3 @@ sdist = {}
 
 [tool.scikit-build.cmake.define]
 CMAKE_CXX_STANDARD = "20"
-
-requires-python = ">=3.13"
