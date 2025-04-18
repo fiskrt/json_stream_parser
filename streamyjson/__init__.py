@@ -4,11 +4,12 @@
 # - Keeping this layer enables a stable and clean interface for users.
 # - Fallback mechanisms to pure Python implementation
 
+# Underscore in _core and _json_parse to not expose them (modules ignore __all__)
 try:
     from ._core import parse_json, StreamingJsonParsera
 except:
     print('Running the non-optimized python impl')
-    from .json_parse import parse_json, StreamingJsonParser
+    from ._json_parse import parse_json, StreamingJsonParser
 
 __all__ = ['parse_json', 'StreamingJsonParser']
 
