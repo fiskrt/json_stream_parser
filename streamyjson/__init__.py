@@ -14,8 +14,8 @@ except:
 __all__ = ['parse_json', 'StreamingJsonParser']
 
 # Potential future reasons:
-# - To provide a clean, minimal public API, hiding internal implementation details.
-# - To allow future changes to the internal module (_core) without breaking external code.
-# - To enable wrapping or extending C++ functionality with Python-side logic if needed.
-# - To support conditional imports or platform-specific backends if required.
-# - To simplify testing by allowing the C++ layer to be mocked or swapped during tests.
+# - Provide a clean, minimal public API, hiding internal implementation details.
+# - Allow future changes to the internal module (_core) without breaking external code.
+# - Enable wrapping or extending C++ functionality with Python-side logic if needed.
+# - Support conditional imports or platform-specific backends if required.
+# - Simplify testing by allowing the C++ layer to be mocked or swapped during tests.

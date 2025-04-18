@@ -2,6 +2,7 @@
 # policies up to CMake 3.27
 cmake_minimum_required(VERSION 3.15...3.27)
 
+message(STATUS "🎯 Running CMake ...")
 # Scikit-build-core sets these values
 project(
   ${SKBUILD_PROJECT_NAME}
@@ -23,3 +24,4 @@ target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 # The install directory is the output (wheel) directory
 install(TARGETS _core DESTINATION streamyjson)
+message(STATUS "🎯 Finished Running CMake!")
