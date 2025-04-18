@@ -109,7 +109,6 @@ public:
         EXPECT_COMMA_OR_END = 6  // expect , or }
     };
     
-    // Constructor
     StreamingJsonParser(bool strict_mode = false) 
         : state(START), strict_mode(strict_mode), result(new JsonObject()) {
         // Initialize the expected characters for each state
@@ -159,12 +158,10 @@ private:
     bool strict_mode;
     std::unordered_map<State, std::string> expected_chars;
     
-    // Check if a character is whitespace
     bool isWhitespace(char c) const {
         return c == ' ' || c == '\n' || c == '\t' || c == '\r';
     }
     
-    // Process a single character
     void processChar(char c) {
         JsonObject* current_obj = stack.empty() ? 
                                 dynamic_cast<JsonObject*>(result.get()) : 
@@ -260,8 +257,3 @@ PYBIND11_MODULE(cppjsonparser, m) {
             return parser.getPython();
         }, py::arg("json_str"), py::arg("strict_mode") = false);
 }
-
-/**
- * Helper functions for testing
- */
-// Create a simple JSON object with string values
