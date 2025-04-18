@@ -239,7 +239,7 @@ private:
 };
 
 // macro defined in pybind11.h (common.h)
-PYBIND11_MODULE(cppjsonparser, m) {
+PYBIND11_MODULE(_core, m) {
     m.doc() = "C++ streaming JSON parser with Python bindings";
 
     // Expose the StreamJsonParser class along with its
