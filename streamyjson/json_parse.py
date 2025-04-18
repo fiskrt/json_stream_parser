@@ -144,6 +144,13 @@ class StreamingJsonParser:
     def get(self) -> dict:
         return self.result
 
+def parse_json(s: str, strict_mode=False) -> dict:
+    return (
+        StreamingJsonParser(strict_mode)
+        .consume(s)
+        .get()
+    )
+
 def run_tests():
     def test_streaming_json_parser():
         parser = StreamingJsonParser()
@@ -252,4 +259,6 @@ def run_tests():
     for name, f in locals().items():
         f()
         print(f'[v] {name}')
-run_tests()
+
+if __name__ == '__main__':
+    run_tests()
