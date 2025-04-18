@@ -1,36 +1,25 @@
-# Sadly cannot use this with the newer pyproject.toml since 'uv pip install -e .' 
-# executes this in a temporary python interpreter rather than the local .venv one.
-cmake_minimum_required(VERSION 3.15)
-project(streamyjson LANGUAGES CXX)
+# Require CMake 3.15+ (matching scikit-build-core) Use new versions of all
+# policies up to CMake 3.27
+cmake_minimum_required(VERSION 3.15...3.27)
 
-message(STATUS "🎯 Running CMake ...")
+# Scikit-build-core sets these values
+project(
+  ${SKBUILD_PROJECT_NAME}
+  VERSION ${SKBUILD_PROJECT_VERSION}
+  LANGUAGES CXX)
 
-set(Python_FIND_VIRTUALENV FIRST) # This is the default.
+# Find the module development requirements (requires FindPython from 3.17 or
+# scikit-build-core's built-in backport)
+find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
+find_package(pybind11 CONFIG REQUIRED)
 
-#set(PYBIND11_CMAKE_DIR "/home/filip/coding/json_stream_parser/.venv/lib/python3.13/site-packages/pybind11/share/cmake/pybind11")
-# The following command finds the pybind11 inside of the uv environment and sets (non-hardcoded version of set command above)
-execute_process(
-    COMMAND python -c "import pybind11; print(pybind11.get_cmake_dir())"
-    OUTPUT_VARIABLE PYBIND11_CMAKE_DIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
-execute_process(
-    COMMAND python -c "import site; print(site.getsitepackages()[0])"
-    OUTPUT_VARIABLE PYTHON_SITE_PACKAGES
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-message(STATUS "The python env is: ${PYTHON_SITE_PACKAGES}")
-message(STATUS "🎯 Done CMake for streamyjson...")
-if(NOT PYBIND11_CMAKE_DIR)
-    message(FATAL_ERROR "Could not find pybind11 CMake dir. Make sure you did uv add pybind11.")
-else()
-    message(STATUS "Found pybind11 CMake directory: ${PYBIND11_CMAKE_DIR}")
-endif()
+# Add a library using FindPython's tooling (pybind11 also provides a helper like
+# this)
+python_add_library(_core MODULE cpp_src/jsonparser.cpp WITH_SOABI)
+target_link_libraries(_core PRIVATE pybind11::headers)
 
-list(APPEND CMAKE_PREFIX_PATH ${PYBIND11_CMAKE_DIR})
+# This is passing in the version as a define just as an example
+target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
-# We have added the include path so now we can find the package
-find_package(pybind11 REQUIRED)
-# We found the package which contain this function
-pybind11_add_module(cppjsonparser jsonparser.cpp)
+# The install directory is the output (wheel) directory
+install(TARGETS _core DESTINATION streamyjson)
