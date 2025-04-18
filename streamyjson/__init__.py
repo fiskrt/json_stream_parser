@@ -6,7 +6,7 @@
 
 # Underscore in _core and _json_parse to not expose them (modules ignore __all__)
 try:
-    from ._core import parse_json, StreamingJsonParsera
+    from ._core import parse_json, StreamingJsonParser
 except:
     print('Running the non-optimized python impl')
     from ._json_parse import parse_json, StreamingJsonParser
