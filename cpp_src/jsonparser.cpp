@@ -121,7 +121,7 @@ public:
     ~StreamingJsonParser() = default;
     
     void consume(const std::string& buffer) {
-        for (char c : buffer) {
+        for (const char c : buffer) {
             if (isWhitespace(c) && state != IN_KEY && state != IN_VALUE) {
                 continue;
             }
