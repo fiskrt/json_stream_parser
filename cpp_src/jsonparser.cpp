@@ -139,9 +139,9 @@ public:
         }
     }
     
-    // TODO: don't use ::get
+    // Don't confuse StreamingJsonParser::get and std::unqiue_ptr::get
     JsonObject* get() const {
-        return dynamic_cast<JsonObject*>(result.get());
+        return result.get();
     }
     
     // Get the result as a Python dict
@@ -150,7 +150,7 @@ public:
     }
     
 private:
-    std::unique_ptr<JsonValue> result;
+    std::unique_ptr<JsonObject> result;
     // Holds a stack of pointers to JsonObjects, make sure that pointers pushed
     // here have lifetimes that exceed the time on stack.
     std::vector<JsonObject*> stack;
@@ -164,10 +164,8 @@ private:
     }
     
     void processChar(char c) {
-        JsonObject* current_obj = stack.empty() ? 
-                                dynamic_cast<JsonObject*>(result.get()) : 
-                                stack.back();
-        
+        JsonObject* current_obj = stack.empty() ? result.get() : stack.back();
+
         switch (state) {
             case START:
                 if (c == '{') {
