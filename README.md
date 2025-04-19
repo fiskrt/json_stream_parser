@@ -1,11 +1,26 @@
 # 🚀 Streamy JSON Parser
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python: 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python: 3.13+](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/)
 
 A fast, stack-based, memory-efficient streaming JSON parser with zero dependencies.
 
 `StreamingJsonParser` provides incremental parsing of JSON data, allowing you to process JSON as it arrives rather than waiting for the complete document. Perfect for handling large JSON responses from APIs, LLM outputs, and other streaming contexts.
+
+## TODO:
+1) Optimize fast-path for multi-character input in quotes
+2) Fix smart-pointers
+
+
+## Clean environment
+Remove environment
+```bash
+rm -r .venv/ build/ dist/ json_stream_parser.egg-info/ tmp/
+```
+Re-install environment (debug)
+```bash
+uv run --no-cache --verbose python
+```
 
 ## ✨ Features
 
@@ -132,3 +147,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Credits
 Claude 3.7 Sonnet (extended thinking)
+https://github.com/pybind/scikit_build_example/tree/master
