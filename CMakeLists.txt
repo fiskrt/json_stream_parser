@@ -14,9 +14,27 @@ project(
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
 
-# Add a library using FindPython's tooling (pybind11 also provides a helper like
-# this)
-python_add_library(_core MODULE cpp_src/jsonparser.cpp WITH_SOABI)
+# Define source files for the streaming JSON parser
+set(PARSER_SOURCES
+  cpp_src/jsonparser.cpp
+)
+
+# Define header files (for IDE integration)
+set(PARSER_HEADERS
+  cpp_src/jsonparser.h
+)
+
+# Add a library using FindPython's tooling
+python_add_library(_core MODULE 
+  cpp_src/bindings.cpp
+  ${PARSER_SOURCES}
+  WITH_SOABI
+)
+
+# Make sure the include directory is in the include path
+target_include_directories(_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cpp_src)
+
+# Link against pybind11
 target_link_libraries(_core PRIVATE pybind11::headers)
 
 # This is passing in the version as a define just as an example
