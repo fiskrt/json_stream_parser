@@ -109,7 +109,7 @@ public:
     };
     
     StreamingJsonParser(bool strict_mode = false) 
-        : state(START), strict_mode(strict_mode), result(new JsonObject()) {
+        : state(START), strict_mode(strict_mode), result(std::make_unique<JsonObject>()) {
         // Initialize the expected characters for each state
         expected_chars[START] = "{";
         expected_chars[EXPECT_KEY_OR_END] = "\"}";
@@ -151,6 +151,8 @@ public:
     
 private:
     std::unique_ptr<JsonValue> result;
+    // Holds a stack of pointers to JsonObjects, make sure that pointers pushed
+    // here have lifetimes that exceed the time on stack.
     std::vector<JsonObject*> stack;
     State state;
     std::string current_key;
@@ -212,12 +214,20 @@ private:
                 
             case EXPECT_VALUE:
                 if (c == '"') {
+                    // we know it's a string value so set cur_obj[cur_key] = ""
                     state = IN_VALUE;
                     current_obj->set(current_key, std::make_unique<JsonString>());
                 } else if (c == '{') {
                     auto newObj = std::make_unique<JsonObject>();
-                    JsonObject* objPtr = dynamic_cast<JsonObject*>(newObj.get());
+                    JsonObject* objPtr = newObj.get();
+                    // Transfer ownership of pointer to current_obj
                     current_obj->set(current_key, std::move(newObj));
+                    // Store raw pointer (w/o ownership) on stack. current_obj has ownership
+                    // so we have to make sure that current_obj lives longer than the element
+                    // does on the stack:
+                    // This is satisifed because 1) current_obj points to result which is alive
+                    // the longest, or 2), points to the previous stack entry which by definition
+                    // of a stack will outlive it.
                     stack.push_back(objPtr);
                     state = EXPECT_KEY_OR_END;
                 }
