@@ -12,11 +12,12 @@
 #include <stdexcept>
 #include <cassert>
 #include <pybind11/pybind11.h>
- #include <pybind11/stl.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 
 
+// Default function parameter value is ONLY specified in header
 StreamingJsonParser::StreamingJsonParser(bool strict_mode) 
     : state(START), strict_mode(strict_mode), result(std::make_unique<JsonObject>()) {
     // Initialize the expected characters for each state
