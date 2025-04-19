@@ -45,8 +45,7 @@ public:
     bool isString() const override { return true; }
     bool isObject() const override { return false; }
     
-    std::string& getValue() { return value; }
-    const std::string& getValue() const { return value; }
+    void append(char c) { value += c; }
     
     py::object toPython() const override {
         return py::str(value);
@@ -199,9 +198,9 @@ private:
                     state = EXPECT_COMMA_OR_END;
                 } else {
                     auto* value = current_obj->get(current_key);
-                    if (value && value->isString()) {
-                        dynamic_cast<JsonString*>(value)->getValue() += c;
-                    }
+                    assert(value != nullptr && value->isString() && "current_obj not inited in IN_VALUE");
+                    // since value is a JsonValue*, must cast to JsonString*
+                    dynamic_cast<JsonString*>(value)->append(c);
                 }
                 break;
                 
