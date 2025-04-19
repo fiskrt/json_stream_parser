@@ -3,7 +3,6 @@
 * With Python bindings using pybind11.
 */
 
-#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -25,7 +24,6 @@ JsonObject where both are derived from JsonValue.
 
 JSON keys are always strings so we use std::string for those.
 It's also easy to convert to python types using py::str.
-
 */
 class JsonValue {
 public:
